@@ -1,6 +1,5 @@
 import { OpenAI } from "openai";
 import { NextResponse, NextRequest } from "next/server";
-import fs from "fs";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -42,25 +41,22 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 }
 
 async function convertAudioToText(audioData: Buffer) {
-  const outputPath = "/tmp/input.webm";
-  
   try {
-    fs.writeFileSync(outputPath, audioData);
+    // Create a File object directly from the buffer instead of using fs
+    const audioFile = new File([audioData], "audio.webm", {
+      type: "audio/webm",
+    });
 
     const response = await openai.audio.transcriptions.create({
-      file: fs.createReadStream(outputPath),
+      file: audioFile,
       model: "whisper-1",
       language: "en",
     });
 
     return response.text;
-  } finally {
-    // Clean up the temporary file
-    try {
-      fs.unlinkSync(outputPath);
-    } catch (cleanupError) {
-      console.warn("Failed to cleanup temp file:", cleanupError);
-    }
+  } catch (error) {
+    console.error("Error in convertAudioToText:", error);
+    throw error;
   }
 }
 
